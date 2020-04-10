@@ -2,6 +2,8 @@
 """Main Branch Bound"""
 
 import numpy as np
+import math
+
 from ortools.linear_solver import pywraplp
 
 from params import Params
@@ -10,7 +12,31 @@ from solverp import SolverP
 IntOrNot = False
 LessMoreOrEqual = 'MoreOrEqual'
 
-param1 = Params(20, 40, "sads", 20, "alow")
+
+class SubSolucao:
+    def __init__(self, solucao, z):
+        self.solucaovariaveis = solucao
+        self.z = z
+
+def integralidadeFunc(array):
+    for i in array:
+        if(isinstance(i, int) != True):
+            return False
+    
+    return True
+
+
+def checklimitante(zPrimal, zDual, z):
+    if(MaxOrMin == 'Max'):
+        if(z < zPrimal):
+            return True
+        else:
+            return False
+    else:
+        if(z < zDual):
+            return True
+        else:
+            return False
 
 # print(param1.testemethod())
 MaxOrMin = "Max"
@@ -53,64 +79,112 @@ def pegaRestricoes(dados):
 
 	return params
 
-def resolve(IntOrNot, LessMoreOrEqual, MaxOrMin, parans):
-    	solver = pywraplp.Solver('RESOLUCAO_DE_PROGRAMACAO_LINEAR', pywraplp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
+# //frags
+integralidade = 0
+limitante = 0
+inviavel = 0
 
-  	infinity = solver.infinity()
-  	x = {}
+zdual = 0
+zprimal = 0
 
-	if IntOrNot == False:
-		for j in range(int(parans.numVariaveis)):
-			x[j] = solver.NumVar(0, infinity, 'x[%i]' % j)
+if MaxOrMin == "MAX":
+	zdual = 0
+	zprimal = -1
+else: 
+	zdual = -1
+	zprimal = 0
+
+class NoBranchbound:
+	def __init__(self, z, variaveis, esquerda=None, direita=None):
+		self.z = z
+		self.variaveis
+		self.esquerda = esquerda
+		self.direita = direita
+
+def insere(raiz, nodo):
+	if raiz is None:
+		raiz = nodo
+
+	    # Nodo deve ser inserido na subárvore direita.
+	elif raiz.z < nodo.z:
+		if raiz.direita is None:
+			raiz.direita = nodo
+		else:
+			insere(raiz.direita, nodo)
+
+		# Nodo deve ser inserido na subárvore esquerda.
 	else:
-		for j in range(int(parans.numVariaveis)):
-			x[j] = solver.IntVar(0, infinity, 'x[%i]' % j)
+		if raiz.esquerda is None:
+			raiz.esquerda = nodo
+		else:
+			insere(raiz.esquerda, nodo)  	
 
-	solucao = []
-	if LessMoreOrEqual == 'LessOrEqual':
-		for i in range(int(parans.numRestricoes)):
+raiz = None
 
-		   constraint = solver.RowConstraint(0, parans.restricoesDir[i], '')
 
-		   for j in range(int(parans.numVariaveis)):
+def verify(array):	
+	results = []
 
-			  constraint.SetCoefficient(x[j], parans.restricoesEsq[i][j])
+	for i in array:
+		results.append(abs(0.5 - array[i]))
 
-	if LessMoreOrEqual == 'MoreOrEqual':
-		for i in range(int(parans.numRestricoes)):
-		  constraint = solver.RowConstraint(parans.restricoesDir[i], infinity, '')
-		  for j in range(int(parans.numVariaveis)):
-		    constraint.SetCoefficient(x[j], parans.restricoesEsq[i][j])
+def min(array):
+	valor = 8000000000000000
 
+	for i in array:
+		if array[i] < valor:
+			valor = array[i]
+	return valor
+    
+def branch_bound(problema1):
+	if raiz is None:
+		raiz = NoBranchbound(solver.resolve(problema1))
+	else:
+		solucao = solver.resolve(problema1)
+		insere(raiz, solucao)
 	
-	objective = solver.Objective()
-
-	for j in range(int(parans.numVariaveis)):
-		objective.SetCoefficient(x[j], parans.coefFuncObj[j])
-	  
-	if MaxOrMin == 'Max':
-		objective.SetMaximization()
+	if integralidadeFunc(solucao.variaveis):
+		integralidade = 1
+		zprimal = solucao.z
+		return
+	if checklimitante(zdual, zprimal, solucao.z):
+		limitante = 1
+		return
+	if solucao == None:
+		inviavel = 1
+		return
+	if inviavel == 0 and integralidade == 0:
+		# Faz o calculo do criterio de ramificação
+		menores = verify(solucao.variaveis)
+		# Retorna a variável de menor valor
+		variavel = min(menores)
+		# Trunca para cima
+		maior = math.ceil(variavel)
+		# Trunca para baixo
+		menor = math.floor(variavel)
+		# Criar novo subproblema
+		sub1
+		result1 = solver.resolve(sub1)
+		solucoes = []
+		solucoes.append(result1.z)
+		insere(raiz, result1)
+		sub2
+		result2 = solver.resolve(sub2)
+		solucoes.append(result1.z)
+		insere(raiz, result2)
+		
+		if MaxOrMin == "Max":
+			maiorZ = max(solucoes)
+			zdual = maiorZ
+		else: 
+			menorZ = min(solucoes)			
+			zprimal = menorZ
+		
+		
+		branch_bound(sub1)
+		branch_bound(sub2)	
 	else:
-		objective.SetMinimization()
-
-	status = solver.Solve()
-	print('\n------------ RESPOSTA ------------\n')
-	if status == pywraplp.Solver.OPTIMAL:
-		print('VALOR OTIMO = {}'.format( solver.Objective().Value()))
-		for j in range(int(parans.numVariaveis)):
-			solucao.append(x[j].solution_value()) 
-			print(' {}  = {}'.format(x[j].name(),x[j].solution_value()))
-		print('\n------------ INFO ADICIONAIS ------------\n')
-		print('PROBLEMA SOLUCIONADO EM {} MILESEGUNDOS'.format(solver.wall_time()))
-		print('PROBLEMA SOLUCIONADO EM {} INTERACOES'.format(1+solver.iterations()))
-	elif status == pywraplp.Solver.INFEASIBLE:
-		print('PROBLEMA INVIAVEL')
-	elif status == pywraplp.Solver.UNBOUNDED:
-		print('PROBLEMA ILIMITADO')
-  	else:
-		print('NAO TEM SOLUCAO OTIMA')
-	return solucao, solver.Objective().Value()
-
+		return
 
 path = 'Problema3.txt'
 numeros = coletadados(path)
@@ -122,43 +196,35 @@ solver.setParams(params)
 solver.iniciaVariaveis(1)
 solver.setObjFunction(1,params.coefFuncObj)
 solver.setRestricoes(1)
-# solver.setRestricao(1, [1, 0], 3)
-solver.resolve()
 
-# print("\n------------ PRIMAL ------------")
-# print(MaxOrMin)
-# print('F.O: {}'.format( params.coefFuncObj))
-# print('Sujeito a :')
-# print('RESTRICAO LADO ESQUERDO:\n {}'.format(params.restricoesEsq))
-# print('RESTRICOES LADO DIREITO:\n {}'.format(params.restricoesDir))
 
-zprimal = 0
-zdual = 0
+# zprimal = 0
+# zdual = 0
 
-if (MaxOrMin == 'Max'):
-    zdual = 0
-    zprimal = -1
-else:
-    zdual = -1
-    zprimal = 0
+# if (MaxOrMin == 'Max'):
+#     zdual = 0
+#     zprimal = -1
+# else:
+#     zdual = -1
+#     zprimal = 0
 
-def integralidade(array):
-    for i in array:
-        if(isinstance(i, int) != True):
-            return False
-    return True
+# def integralidade(array):
+#     for i in array:
+#         if(isinstance(i, int) != True):
+#             return False
+#     return True
 
-def limitante(zPrimal, zDual, z):
-    if(MaxOrMin == 'Max'):
-        if(z < zPrimal):
-            return True
-        else:
-            return False
-    else:
-        if(z < zDual):
-            return True
-        else:
-            return False
+# def limitante(zPrimal, zDual, z):
+#     if(MaxOrMin == 'Max'):
+#         if(z < zPrimal):
+#             return True
+#         else:
+#             return False
+#     else:
+#         if(z < zDual):
+#             return True
+#         else:
+#             return False
 
 # while(1):
 #     solucao = resolve(IntOrNot, LessMoreOrEqual, MaxOrMin, params)
