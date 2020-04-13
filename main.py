@@ -1,17 +1,34 @@
 # -*- coding: utf-8 -*-
 """Main Branch Bound"""
 
-import numpy as np
-import math
+"""Dupla: 	Josué de Paiva Bernardino
+	  		Thomas Ribeiro de Araujo"""
+"""Como executar código:
+	Primeiro é preciso instalar os módulos numpy e ortools utilizando o pip
+	executando o seguinte comando: pip install numpy & pip install ortools.
+	Logo em seguinda ir no terminal na basta do arquivo e executar python main.py
+"""
 
-from ortools.linear_solver import pywraplp
+import math
+import numpy as np
+
+# from ortools.linear_solver import pywraplp
 
 from params import Params
 from solverp import SolverP
 
 IntOrNot = False
-LessMoreOrEqual = 'MoreOrEqual'
+LessMoreOrEqual = 'LessMoreOrEqual'
+raizb = 0
+solvers =  SolverP()
 
+# //frags
+integralidade = 0
+limitante = 0
+inviavel = 0
+
+zdual = 0
+zprimal = 0
 
 class SubSolucao:
     def __init__(self, solucao, z):
@@ -27,27 +44,30 @@ def integralidadeFunc(array):
 
 
 def checklimitante(zPrimal, zDual, z):
-    if(MaxOrMin == 'Max'):
-        if(z < zPrimal):
-            return True
-        else:
-            return False
-    else:
-        if(z < zDual):
-            return True
-        else:
-            return False
+	if(MaxOrMin == 'Max'):
+		if(z < zPrimal):
+			return True
+		else:
+			return False
+	else:
+		if(z < zDual):
+			return True
+		else:
+			return False
 
-# print(param1.testemethod())
-MaxOrMin = "Max"
-# MAXORMIM = input('\nO PROBLEMA É DE ? \n[MAXIMIZACAO] - 1 \n[MINIMIZACAO] - 2\nDigite: ')
-# if MAXORMIM ==  2:
-# 	MaxOrMin = 'Min'
-# else:
-#     MaxOrMin = 'Max'
+MAXORMIM = input('\nO PROBLEMA É DE ? \n[MAXIMIZACAO] - 1 \n[MINIMIZACAO] - 2\nDigite: ')
+if MAXORMIM ==  2:
+	MaxOrMin = 'Min'
+	zdual = -1
+	zprimal = 0
+else:
+	MaxOrMin = 'Max'
+	zdual = 0
+	zprimal = -1
+
 
 def coletadados(path):
-    	"""# **Lendo arquivo**"""
+	"""# **Lendo arquivo**"""
 	arquivo = open(path,'r')
 	numeros = []
 
@@ -75,31 +95,24 @@ def pegaRestricoes(dados):
 		arrayRestricoesEsquerda.append(aux2[0:int(numVariaveis)])
 		arrayRestricoesDireita.append(aux2[int(numVariaveis)])
 
-	params = Params(numVariaveis, numRestricoes, np.double(coefFuncObj), np.double(arrayRestricoesEsquerda), np.double(arrayRestricoesDireita))
+	print("pega restrição")
+	print(arrayRestricoesEsquerda)
+
+	params = Params(numVariaveis, numRestricoes, np.double(coefFuncObj), 
+					np.double(arrayRestricoesEsquerda), np.double(arrayRestricoesDireita), 
+					1 if LessMoreOrEqual == "LessMoreOrEqual" else 0,1 if MaxOrMin == "Max" else 0)
 
 	return params
-
-# //frags
-integralidade = 0
-limitante = 0
-inviavel = 0
-
-zdual = 0
-zprimal = 0
-
-if MaxOrMin == "MAX":
-	zdual = 0
-	zprimal = -1
-else: 
-	zdual = -1
-	zprimal = 0
 
 class NoBranchbound:
 	def __init__(self, z, variaveis, esquerda=None, direita=None):
 		self.z = z
-		self.variaveis
+		self.variaveis = variaveis
 		self.esquerda = esquerda
 		self.direita = direita
+
+def createArrayNumpy(array):
+    return np.double(array)
 
 def insere(raiz, nodo):
 	if raiz is None:
@@ -119,83 +132,226 @@ def insere(raiz, nodo):
 		else:
 			insere(raiz.esquerda, nodo)  	
 
-raiz = None
+def minimo(raiz):
+	valor = 100000000000
+	nodo = raiz
+	while nodo.esquerda is not None :
+		nodo = nodo.esquerda
+		if isinstance(nodo.z):
+			if nodo.z < valor:
+				valor = nodo.z
+	return valor
 
+def maximo(raiz):
+	maior = -1000000
+	nodo = raiz
+	while nodo.direita is not None:
+		nodo = nodo.direita
+		if isinstance(nodo.z):
+			if nodo.z > maior:
+				maior = nodo.z
+	return maior
 
 def verify(array):	
-	results = []
+	results = [0]*2
+	value = 50000000000000
 
-	for i in array:
-		results.append(abs(0.5 - array[i]))
+	for i in range(0,len(array)):
+		aux = abs(0.5 - array[i])
+		print(aux)
+		if aux < value:
+			value = aux
+			results[0] = value
+			results[1] = i
+
+	return results
 
 def min(array):
 	valor = 8000000000000000
 
-	for i in array:
+	for i in range(0,len(array)):
 		if array[i] < valor:
 			valor = array[i]
 	return valor
-    
-def branch_bound(problema1):
-	if raiz is None:
-		raiz = NoBranchbound(solver.resolve(problema1))
-	else:
-		solucao = solver.resolve(problema1)
-		insere(raiz, solucao)
-	
-	if integralidadeFunc(solucao.variaveis):
-		integralidade = 1
-		zprimal = solucao.z
-		return
-	if checklimitante(zdual, zprimal, solucao.z):
-		limitante = 1
-		return
-	if solucao == None:
-		inviavel = 1
-		return
-	if inviavel == 0 and integralidade == 0:
-		# Faz o calculo do criterio de ramificação
-		menores = verify(solucao.variaveis)
-		# Retorna a variável de menor valor
-		variavel = min(menores)
-		# Trunca para cima
-		maior = math.ceil(variavel)
-		# Trunca para baixo
-		menor = math.floor(variavel)
-		# Criar novo subproblema
-		sub1
-		result1 = solver.resolve(sub1)
-		solucoes = []
-		solucoes.append(result1.z)
-		insere(raiz, result1)
-		sub2
-		result2 = solver.resolve(sub2)
-		solucoes.append(result1.z)
-		insere(raiz, result2)
-		
-		if MaxOrMin == "Max":
-			maiorZ = max(solucoes)
-			zdual = maiorZ
-		else: 
-			menorZ = min(solucoes)			
-			zprimal = menorZ
-		
-		
-		branch_bound(sub1)
-		branch_bound(sub2)	
-	else:
-		return
+
+def limpaArray(indice, array):
+	result = [0]*len(array)
+
+	for i in range(0,len(array)):
+		if indice != i:
+			result[i] = 0
+		else:
+			result[i] = 1
+
+	return result
+
+def acrescentaRestricao(nova, params):
+    	restriEsqOld = params.getRestricoesEsq()
+
+# solver =  SolverP()
+# solver.setParams(params)
+# solver.iniciaVariaveis(1)
+# solver.setObjFunction(1,params.coefFuncObj)
+# solver.setRestricoes(1)
 
 path = 'Problema3.txt'
 numeros = coletadados(path)
 
 params = pegaRestricoes(numeros)
 
-solver =  SolverP()
-solver.setParams(params)
-solver.iniciaVariaveis(1)
-solver.setObjFunction(1,params.coefFuncObj)
-solver.setRestricoes(1)
+print("Função objetivo")
+print(params.coefFuncObj)
+print("Restrições Lado esquerdo")
+print(params.restricoesEsq)
+print("Restrições Lado direito")
+print(params.restricoesDir)
+print("Maior ou Menor")
+print(params.maiorMenor)
+print("Max ou Min")
+print(params.maxOrMin)
+
+
+
+# subsolucao = solver.resolve(params, 1 if LessMoreOrEqual == "LessMoreOrEqual" else 0, 1 if MaxOrMin == "Max" else 0)
+# raiz = NoBranchbound(subsolucao[1], subsolucao[0])
+# print(raiz.variaveis)
+# print(raiz.z)
+# raiz = NoBranchbound(solver.resolve(params, 1 if LessMoreOrEqual == "LessMoreOrEqual" else 0, 1 if MaxOrMin == "Max" else 0))
+# raiz = NoBranchbound(solver.resolve(params,1,1))
+# print(raiz.z)
+
+def branch_bound(problema):
+	global raizb
+	global zdual
+	global zprimal
+	global inviavel
+	global integralidade
+	global limitante
+
+	if raizb == 0:
+		solucao = solvers.resolve(problema)
+		print("Problema inicial")
+		print(solucao)
+		print("")
+		raizb = NoBranchbound(solucao[1], solucao[0])
+	else:
+		solucao = solvers.resolve(problema)
+		# insere(raizb, NoBranchbound(solucao[1], solucao[0]))
+	
+	if integralidadeFunc(solucao[0]):
+		integralidade = 1
+		zprimal = solucao[1]
+		return
+	if checklimitante(zprimal, zdual,solucao[0]):
+		limitante = 1
+		return
+	if solucao == None:
+		inviavel = 1
+		return
+	if inviavel == 0 and integralidade == 0:
+		# Faz o calculo do criterio de ramificação e retorna a menor
+		varialveEscolhida = verify(solucao[0])
+		# Trunca para cima
+		maior = math.ceil(varialveEscolhida[0])
+		# Trunca para baixo
+		menor = math.floor(varialveEscolhida[0])
+		#Acrescenta 1 ao número de restrições
+		numRestricao = int(problema.numRestricoes) + 1
+		# Zera as variaveis que não foram escolhidas
+		novaRestricao = limpaArray(varialveEscolhida[1], solucao[0])
+
+		print("Nova restrinção")
+		print(novaRestricao)
+
+		# Pega valor da restricão do lado direito
+		novaRestricaoDir = menor
+
+		aux = problema.restricoesEsq.tolist()
+		print("")
+		print(aux)
+		aux.append(novaRestricao)
+		print("")
+		print(aux)
+		aux2 = problema.restricoesDir.tolist()
+		aux2.append(novaRestricaoDir)
+
+		# Cria subproblema 1
+		subprob1 = Params(problema.numVariaveis, numRestricao, problema.coefFuncObj
+						  ,np.double(aux), np.double(aux2), 1, 1 if MaxOrMin == "Max" else 0)
+		print("")
+		print("Sub problema 1")
+		print("Função objetivo")
+		print(subprob1.coefFuncObj)
+		print("Restrições Lado esquerdo")
+		print(subprob1.restricoesEsq)
+		print("Restrições Lado direito")
+		print(subprob1.restricoesDir)
+		print("Maior ou Menor")
+		print(subprob1.maiorMenor)
+		print("Max ou Min")
+		print(subprob1.maxOrMin)
+		print("-------------------------")
+		print("")
+		novaRestricaoDir = maior
+		aux2 = problema.restricoesDir.tolist()
+		aux2.append(novaRestricaoDir)
+		# Cria subproblema 2
+		subprob2 = Params(problema.numVariaveis, numRestricao, problema.coefFuncObj
+						  ,np.double(aux), np.double(aux2), 0, 1 if MaxOrMin == "Max" else 0)
+
+		print("Sub problema 2")
+		print("Função objetivo")
+		print(subprob2.coefFuncObj)
+		print("Restrições Lado esquerdo")
+		print(subprob2.restricoesEsq)
+		print("Restrições Lado direito")
+		print(subprob2.restricoesDir)
+		print("Maior ou Menor")
+		print(subprob2.maiorMenor)
+		print("Max ou Min")
+		print(subprob2.maxOrMin)
+		print("-------------------------")
+		
+		# branch_bound(subprob1)
+		# branch_bound(subprob2)
+
+		result1 = solvers.resolve(subprob1)
+		print("")
+		print("Resultado 1")
+		print(result1)
+
+		result2 = solvers.resolve(subprob2)
+
+		print("")
+		print("Resultado 2")
+		print(result2)
+
+		# print(result1)
+		# print(result2)
+		
+		# # result1 = solver.resolve(sub1)
+		# solucoes = [1]
+		# solucoes.append(result1.z)
+		# insere(raizb, result1)
+		# sub2
+		# result2 = solver.resolve(sub2)
+		# solucoes.append(result1.z)
+		# insere(raizb, result2)
+		
+		# if MaxOrMin == "Max":
+		# 	maiorZ = max(solucoes)
+		# 	zdual = maiorZ
+		# else: 
+		# 	menorZ = min(solucoes)			
+		# 	zprimal = menorZ
+		
+		
+		# branch_bound(sub1)
+		# branch_bound(sub2)	
+	else:
+		return
+
+branch_bound(params)
 
 
 # zprimal = 0
