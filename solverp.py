@@ -18,10 +18,10 @@ class SolverP:
         # Se for 1 cria variáveis reais
         if IntOrNot:
             for j in range(int(self.parans.numVariaveis)):
-                self.x[j] = self.solver.NumVar(0, self.infinity, 'x[%i]' % j)
+                self.x[j] = self.solver.NumVar(0, 1, 'x[%i]' % j)
         else:
             for j in range(int(self.parans.numVariaveis)):
-                self.x[j] = self.solver.IntVar(0, self.infinity, 'x[%i]' % j)
+                self.x[j] = self.solver.IntVar(0, 1, 'x[%i]' % j)
 
     # Seta as restrições do lado direito e esquerdo
     def setRestricoes(self, LessMoreOrEqual):
@@ -39,18 +39,10 @@ class SolverP:
                 for j in range(int(self.parans.numVariaveis)):
                     constraint.SetCoefficient(self.x[j], self.parans.restricoesEsq[i][j])
     
-    def setRestricao(self, LessMoreOrEqual, restricaoCof, valor):
-        # Se for 1 é <= caso contrário >=
-        # Coef devem ser um array tipo [1 0 0 0] onde 1 indica que aquela variavel vai ter valor 1
-        if LessMoreOrEqual:
-            constraint = self.solver.Constraint(-self.solver.infinity(), valor)
-            for i in range(int(self.parans.numVariaveis)):
-                constraint.SetCoefficient(self.x[i], restricaoCof[i])
-        else:
-            constraint = self.solver.Constraint(valor, self.solver.infinity())
-            for i in range(int(self.parans.numVariaveis)):
-                constraint.SetCoefficient(self.x[i], restricaoCof[i])
-            
+    def setRestricao(self, alvo, valor):
+        aux =  self.x[alvo]
+        self.solver.Add( aux == valor)
+    
     # Seta a função objetivo 
     def setObjFunction(self, maxormin, funcObj):
         for j in range(int(self.parans.numVariaveis)):
