@@ -18,7 +18,7 @@ from params import Params
 from solverp import SolverP
 
 IntOrNot = False
-LessMoreOrEqual = 'LessMoreOrEqual'
+LessMoreOrEqual = 'MoreOrEqual'
 raizb = 0
 solvers = None
 
@@ -44,13 +44,15 @@ def integralidadeFunc(array):
 
 
 def checklimitante(zPrimal, zDual, z):
+    	global zdual
 	if(MaxOrMin == 'Max'):
-		if(z < zPrimal):
+		if(z > zDual):
 			return True
 		else:
 			return False
 	else:
 		if(z < zDual):
+			zdual = z
 			return True
 		else:
 			return False
@@ -202,44 +204,73 @@ def branch_bound(problema):
 		raizb = NoBranchbound(solucao[1], solucao[0])
 	else:
 		solucao = problema.resolve2()
+		print("Solucao")
+		print(solucao)
+
 		# insere(raizb, NoBranchbound(solucao[1], solucao[0]))
-	
 	if integralidadeFunc(solucao[0]):
 		integralidade = 1
-		zprimal = solucao[1]
+		insere(raizb, NoBranchbound(solucao[1], solucao[0]))
+		if zprimal < solucao[1]:
+			zprimal = solucao[1]
+			insere(raizb, NoBranchbound(solucao[1], solucao[0]))
+			return
 		return
 	if checklimitante(zprimal, zdual,solucao[0]):
 		limitante = 1
+		insere(raizb, NoBranchbound(solucao[1], solucao[0]))
 		return
 	if solucao == None:
 		inviavel = 1
+		print("Inviável")
 		return
 	if inviavel == 0 and integralidade == 0:
 		# Faz o calculo do criterio de ramificação e retorna a menor
 		variaveis = problema.x
 		
-		print("Variaveis solver")
-		print(variaveis)
-		varialveEscolhida = verify(solucao[0])
+		variavelEscolhida = verify(solucao[0])
 		print("")
 		print("Variavel escolhida")
-		print(varialveEscolhida)
+		print(variavelEscolhida)
 
 		novoSolver = SolverP(problema.getParams())
-		novoSolver.setRestricao(varialveEscolhida[1], 1)
-
-
-		novoSolver2 = SolverP(problema.getParams())
-		novoSolver2.setRestricao(varialveEscolhida[1], 0)
-
-		print("")
-		print("Resultado 1")
-		print(novoSolver.resolve2())
-
-		print("")
-		print("Resultado 2")
-		print(novoSolver2.resolve2())
+		novoSolver.setRestricao(variavelEscolhida[1], 0)
+		print("solver1")
+		print(novoSolver.getSolver().NumConstraints())
 		
+		novoSolver2 = SolverP(problema.getParams())
+		novoSolver2.setRestricao(variavelEscolhida[1], 1)
+		print("solver2")
+		print(novoSolver2.getSolver().NumConstraints())
+		# solucao1 = novoSolver.resolve2()
+		# solucao2 = novoSolver2.resolve2()
+
+		# menorZ = minimo(solucao1. solucao2)
+
+		# atualizarDual(menorZ)
+
+		branch_bound(novoSolver)
+		branch_bound(novoSolver2)
+
+		# print("")
+		# print("Resultado 1")
+		# print(solucao1)
+
+		# print("")
+		# print("Resultado 2")
+		# print(solucao2)
+
+		# if integralidadeFunc(solucao[0]):
+		# 	integralidade = 1
+		# 	zprimal = solucao[1]
+		# 	return
+		# if checklimitante(zprimal, zdual,solucao[0]):
+		# 	limitante = 1
+		# 	return
+		# if solucao == None:
+		# 	inviavel = 1
+		# 	return
+
 		# if MaxOrMin == "Max":
 		# 	maiorZ = max(solucoes)
 		# 	zdual = maiorZ
@@ -254,6 +285,11 @@ numeros = coletadados(path)
 
 params = pegaRestricoes(numeros)
 
+
+# print("Direita")
+# print(params.getRestricoesDir())
+# print("Esquerda")
+# print(params.getRestricoesEsq())
 solvers = SolverP(params)
 
 branch_bound(solvers)
